@@ -1,0 +1,104 @@
+# ═══════════════════════════════════════════════════════════════
+#  RedTrack · GA4 · GTM — Produção (track.datahooksbr.com)
+# ═══════════════════════════════════════════════════════════════
+#
+#  Nginx → :8010 → tracking_api
+#  GTM SS já rodando em tracking_gtm_server_dev (:8081)
+#
+#  docker-compose up -d --build
+#
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  api:
+    build: .
+    container_name: tracking_api
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8010:8000"
+    volumes:
+      - ./credentials:/app/credentials:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build: .
+    container_name: tracking_worker
+    command: python -m app.queue.worker
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./credentials:/app/credentials:ro
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    container_name: tracking_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-tracking}
+      POSTGRES_USER: ${DB_USER:-tracker}
+      POSTGRES_PASSWORD: ${DB_PASS:-adminforte}
+    volumes:
+      - tracking_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tracker} -d ${DB_NAME:-tracking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Postgres NÃO expõe porta externa — só acessível dentro da rede Docker
+    # Isso evita conflito com o rules-db que já usa 5432 no host
+
+  redis:
+    image: redis:7
+    container_name: tracking_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ════════════════════════════════════════════════════════════════
+  #  GTM Server-Side — JÁ RODANDO NO HOST (tracking_gtm_server_dev)
+  # ════════════════════════════════════════════════════════════════
+  #  NÃO subir outro container GTM SS.
+  #  O backend acessa o existente via:
+  #    GTM_SERVER_URL=http://host.docker.internal:8081
+  #
+  #  Se quiser migrar o GTM SS para dentro deste compose,
+  #  descomente o bloco abaixo e ajuste o .env:
+  # ════════════════════════════════════════════════════════════════
+  #
+  # gtm-server:
+  #   image: gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable
+  #   container_name: tracking_gtm_server
+  #   ports:
+  #     - "8081:8080"
+  #   environment:
+  #     CONTAINER_CONFIG: ${GTM_CONTAINER_CONFIG:-}
+  #     RUN_AS_PREVIEW_SERVER: "false"
+  #     PORT: "8080"
+  #   restart: unless-stopped
+
+volumes:
+  tracking_pg_data:
