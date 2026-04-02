@@ -27,6 +27,7 @@ _HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>DataHooks Tracking — Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -274,12 +275,33 @@ function renderWebhooks(){
 function renderTracker(){
   var c=document.getElementById('tab-tracker');
   var snippet='<script>window.GA4_TRACKER_URL = "'+HOST+'";<\/script>\n<script src="'+HOST+'/static/tracker.js" defer><\/script>';
-  var vsl='// Tracking de progresso VSL\nwindow.trackVslProgress(25, 45.2);  // 25%\nwindow.trackVslProgress(50, 90.5);  // 50%\nwindow.trackVslProgress(75, 135.8); // 75%\nwindow.trackVslProgress(100, 180);  // 100%';
 
   var html='<h2>Instalação do Tracker</h2><p class="sub">Cole no HEAD de cada LP/VSL. O tracker detecta o domínio e resolve a conta GA4 certa.</p>';
-  html+=codeBlock('1. Snippet (HEAD da LP)',snippet);
-  html+=codeBlock('2. VSL Progress (opcional)',vsl);
-  html+='<div class="card" style="margin-top:18px;background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.12)">';
+  html+=codeBlock('Snippet (cole no HEAD da LP)',snippet);
+
+  // Eventos capturados
+  html+='<div class="card" style="margin-top:18px;margin-bottom:16px"><h4 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px">Eventos capturados automaticamente</h4>';
+  html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">';
+  var events=[
+    {n:'page_view',d:'Dispara ao carregar a página',c:'#3b82f6'},
+    {n:'scroll_depth',d:'Marcos: 25%, 50%, 75%, 90%',c:'#8b5cf6'},
+    {n:'cta_click',d:'Cliques em links e botões',c:'#f59e0b'},
+    {n:'vsl_progress',d:'Vturb auto-detectado: 25%, 50%, 75%, 100%',c:'#10b981'}
+  ];
+  events.forEach(function(e){
+    html+='<div style="padding:10px 14px;background:rgba(0,0,0,.2);border-radius:8px;border-left:3px solid '+e.c+'">';
+    html+='<div style="font-size:12px;font-weight:600;color:'+e.c+'">'+e.n+'</div>';
+    html+='<div style="font-size:11px;color:#555;margin-top:2px">'+e.d+'</div></div>';
+  });
+  html+='</div></div>';
+
+  // Vturb info
+  html+='<div class="card" style="background:rgba(16,185,129,.05);border-color:rgba(16,185,129,.12);margin-bottom:16px">';
+  html+='<h4 style="font-size:12px;font-weight:600;color:#34d399;margin-bottom:6px">Vturb — Tracking automático</h4>';
+  html+='<p style="font-size:11px;color:#777;line-height:1.7">O tracker.js detecta o player <span class="mono">&lt;vturb-smartplayer&gt;</span> automaticamente. Não precisa de script extra. Quando o visitante assiste a VSL, os marcos 25%, 50%, 75% e 100% são enviados como evento <span class="mono">vsl_progress</span> com o tempo exato em segundos.</p></div>';
+
+  // Multi-domínio
+  html+='<div class="card" style="background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.12)">';
   html+='<h4 style="font-size:12px;font-weight:600;color:#f59e0b;margin-bottom:6px">Como funciona o multi-domínio</h4>';
   html+='<p style="font-size:11px;color:#777;line-height:1.7">O tracker.js envia o <span class="mono">page_location</span> completo. O backend extrai domínio+path, busca na tabela <span class="mono">ga4_integrations</span> por match exato → genérico → fallback .env. Cada domínio pode ter sua própria conta GA4.</p></div>';
   c.innerHTML=html;

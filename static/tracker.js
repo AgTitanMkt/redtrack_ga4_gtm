@@ -6,8 +6,9 @@
  *   - page_view (ao carregar)
  *   - scroll_depth (25%, 50%, 75%, 90%)
  *   - cta_click (em <a> e <button>)
+ *   - vsl_progress (25%, 50%, 75%, 100%) — auto-detecta Vturb
  *
- * Expõe função pública:
+ * Expõe função pública (para players não-Vturb):
  *   window.trackVslProgress(percent, seconds)
  *
  * CONFIGURAÇÃO:
@@ -172,4 +173,25 @@
       video_current_time: seconds,
     });
   };
+
+  // ── Vturb auto-detect (player novo: <vturb-smartplayer>) ─────
+  var _vslFired = {};
+  document.addEventListener("player:ready", function (event) {
+    var detail = event.detail || {};
+    var player = detail.player || document.querySelector("vturb-smartplayer");
+    if (!player) return;
+    var video = player.querySelector("video");
+    if (!video) return;
+
+    video.addEventListener("timeupdate", function () {
+      if (!video.duration) return;
+      var pct = Math.round((video.currentTime / video.duration) * 100);
+      [25, 50, 75, 100].forEach(function (m) {
+        if (pct >= m && !_vslFired[m]) {
+          _vslFired[m] = true;
+          window.trackVslProgress(m, video.currentTime);
+        }
+      });
+    });
+  });
 })();
